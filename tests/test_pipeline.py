@@ -30,6 +30,16 @@ def test_feature_engineering_creates_features():
     df = validator.run(df)
     fe = FeatureEngineering()
     df_features = fe.run(df)
+
+    # customerID must be gone
     assert "customerID" not in df_features.columns
+
+    # Churn must be 0/1
     assert df_features["Churn"].isin([0, 1]).all()
-    assert df_features.shape[1] == 31
+
+    # No object/text columns allowed
+    obj_cols = [c for c in df_features.columns if df_features[c].dtype == "object"]
+    assert len(obj_cols) == 0, f"Found text columns: {obj_cols}"
+
+    # Rows preserved
+    assert df_features.shape[0] == 7043
