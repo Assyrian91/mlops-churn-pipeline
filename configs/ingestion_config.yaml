@@ -1,0 +1,9 @@
+data_source:
+  raw_path: "data/raw/Telco-Customer-Churn.csv"
+  processed_path: "data/processed/churn_clean.csv"
+
+schema:
+  target_column: "Churn"
+  id_column: "customerID"
+  numeric_columns: ["tenure", "MonthlyCharges", "TotalCharges"]
+  categorical_columns: ["gender", "Partner", "Dependents", "PhoneService", "MultipleLines", "InternetService", "OnlineSecurity", "OnlineBackup", "DeviceProtection", "TechSupport", "StreamingTV", "StreamingMovies", "Contract", "PaperlessBilling", "PaymentMethod"]

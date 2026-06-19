@@ -1,32 +1,25 @@
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
+*.pyc
+*.pyo
 .venv/
-env/
-venv/
 
 # Data
 data/raw/*.csv
 data/processed/*.csv
 
-# Models
-models/*.pkl
-models/*.h5
-models/*.joblib
-
 # MLflow
 mlruns/
+mlflow.db
 
-# Jupyter
-.ipynb_checkpoints
-*.ipynb
+# Model artifacts
+models/*.joblib
+models/*.pkl
 
 # OS
-.DS_Store
 Thumbs.db
+.DS_Store
 
-# Environment variables
-.env
+# IDE
+.vscode/
+.idea/

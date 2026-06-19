@@ -1,18 +1,18 @@
-# Use an official Python runtime
-# We use 3.11-slim as a base for stability
-FROM python:3.11-slim
+FROM python:3.12-slim
 
-# Set the working directory in the container
 WORKDIR /app
 
-# Copy the requirements file into the container
+# Install dependencies first (cached layer)
 COPY requirements.txt .
-
-# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code
-COPY . .
+# Copy source code and model
+COPY src/ src/
+COPY models/ models/
+COPY configs/ configs/
 
-# Command to run the app (We will update this later when we build the API)
-# CMD ["python", "src/api/main.py"]
+# Expose port
+EXPOSE 8000
+
+# Run the API
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
