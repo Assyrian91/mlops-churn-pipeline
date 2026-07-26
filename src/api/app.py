@@ -35,7 +35,7 @@ st.markdown("""
     .risk-high { color: #E74C3C; font-size: 1.8rem; font-weight: 800; }
     .risk-low { color: #27AE60; font-size: 1.8rem; font-weight: 800; }
     .risk-medium { color: #F39C12; font-size: 1.8rem; font-weight: 800; }
-    
+
     /* Sidebar Styling */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
@@ -43,7 +43,7 @@ st.markdown("""
     [data-testid="stSidebar"] * {
         color: white !important;
     }
-    
+
     /* Form Styling */
     .stForm {
         background-color: #F8F9FA;
@@ -52,7 +52,7 @@ st.markdown("""
         padding: 2rem;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     }
-    
+
     /* Recommendation Box */
     .rec-box {
         background: #ffffff;
@@ -60,6 +60,15 @@ st.markdown("""
         padding: 1.5rem;
         border-radius: 5px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-top: 1rem;
+    }
+
+    /* Value Box */
+    .value-box {
+        background: #F8F9FA;
+        border: 1px solid #E1E4E8;
+        border-radius: 8px;
+        padding: 1rem 1.5rem;
         margin-top: 1rem;
     }
 </style>
@@ -88,9 +97,9 @@ API_URL = "https://assyriana-churn-api.hf.space"
 # --- Input Form (Doesn't re-run until button is clicked) ---
 with st.form("prediction_form"):
     st.subheader("📋 Customer Information")
-    
+
     col1, col2, col3 = st.columns(3)
-    
+
     with col1:
         st.markdown("**Demographics**")
         gender = st.selectbox("Gender", ["Male", "Female"])
@@ -98,7 +107,7 @@ with st.form("prediction_form"):
         partner = st.selectbox("Has Partner", ["Yes", "No"])
         dependents = st.selectbox("Has Dependents", ["Yes", "No"])
         tenure = st.slider("Tenure (months)", 0, 72, 12)
-        
+
     with col2:
         st.markdown("**Services**")
         phone = st.selectbox("Phone Service", ["Yes", "No"])
@@ -107,7 +116,7 @@ with st.form("prediction_form"):
         online_security = st.selectbox("Online Security", ["No", "Yes", "No internet service"])
         online_backup = st.selectbox("Online Backup", ["No", "Yes", "No internet service"])
         device_protection = st.selectbox("Device Protection", ["No", "Yes", "No internet service"])
-        
+
     with col3:
         st.markdown("**Billing & Support**")
         tech_support = st.selectbox("Tech Support", ["No", "Yes", "No internet service"])
@@ -145,24 +154,25 @@ if submit_button:
             result = response.json()
             probability = result["churn_probability"]
             will_churn = result["customer_will_churn"]
+            rec = result["recommendation"]
 
-            # Determine Risk Class
-            if probability >= 0.7:
+            risk_tier = rec["risk_tier"]
+            if risk_tier == "High":
                 risk_class, risk_label, emoji = "risk-high", "HIGH RISK", "🔴"
-            elif probability >= 0.4:
+            elif risk_tier == "Medium":
                 risk_class, risk_label, emoji = "risk-medium", "MEDIUM RISK", "🟡"
             else:
                 risk_class, risk_label, emoji = "risk-low", "LOW RISK", "🟢"
 
             # Display Results in Columns
             res_col1, res_col2 = st.columns([1, 2])
-            
+
             with res_col1:
                 st.markdown("### Prediction Result")
                 st.progress(probability)
                 st.markdown(f'<p class="{risk_class}">{emoji} {risk_label}</p>', unsafe_allow_html=True)
                 st.caption(f"Probability: **{probability * 100:.1f}%**")
-                
+
             with res_col2:
                 st.markdown("### Quick Stats")
                 m1, m2, m3 = st.columns(3)
@@ -170,36 +180,30 @@ if submit_button:
                 m2.metric("Contract", contract.split("-")[0], "Risky" if "month" in contract.lower() else "Safe")
                 m3.metric("Bill", f"${monthly_charges:.0f}")
 
-            # Recommendations
+            # Recommendations — now rendered straight from the API's response,
+            # not recomputed in the frontend. See src/api/recommendations.py
+            # for the full costed methodology.
             st.subheader("💡 Personalized Retention Strategy")
-            if probability >= 0.7:
-                st.markdown("""<div class="rec-box"><strong>🚨 URGENT — Immediate Action Required</strong><br><br>
-                • Offer <strong>20-30% discount</strong> on current plan<br>
-                • Assign <strong>dedicated account manager</strong><br>
-                • Offer <strong>free upgrade</strong> to higher-tier plan for 3 months<br>
-                • Schedule <strong>retention call within 24 hours</strong></div>""", unsafe_allow_html=True)
-            elif probability >= 0.4:
-                st.markdown("""<div class="rec-box"><strong>⚠️ MONITOR — Proactive Outreach Recommended</strong><br><br>
-                • Send <strong>personalized check-in email</strong><br>
-                • Offer <strong>loyalty discount</strong> (10-15%)<br>
-                • Suggest <strong>contract upgrade</strong> from month-to-month<br>
-                • Add <strong>free value</strong> (extra data, premium channel trial)</div>""", unsafe_allow_html=True)
-            else:
-                st.markdown("""<div class="rec-box"><strong>✅ STABLE — Maintain Relationship</strong><br><br>
-                • Continue <strong>standard engagement</strong><br>
-                • Include in <strong>loyalty rewards program</strong><br>
-                • Send <strong>satisfaction survey</strong> quarterly</div>""", unsafe_allow_html=True)
+            steps_html = "".join(f"• {s}<br>" for s in rec["recommended_steps"])
+            st.markdown(
+                f'<div class="rec-box"><strong>{rec["headline"]}</strong><br><br>{steps_html}</div>',
+                unsafe_allow_html=True
+            )
 
-            # Risk Factors
+            # Expected value breakdown — the "why this action" math
+            st.subheader("📊 Why This Action — Expected Value")
+            v1, v2, v3, v4 = st.columns(4)
+            v1.metric("Estimated Value at Risk", f"${rec['estimated_value_at_risk']:.2f}")
+            v2.metric("Intervention Cost", f"${rec['estimated_intervention_cost']:.2f}")
+            v3.metric("Assumed Success Rate", f"{rec['assumed_success_rate'] * 100:.0f}%")
+            v4.metric("Expected Value of Action", f"${rec['expected_value_of_action']:.2f}")
+            st.caption(rec["assumptions_note"])
+
+            # Risk Factors — now returned by the API, derived the same way for
+            # every caller (not just this dashboard)
             with st.expander("🔍 Detected Risk Factors"):
-                factors = []
-                if tenure < 12: factors.append("🔴 Very short tenure — customer hasn't committed")
-                if contract == "Month-to-month": factors.append("🔴 Month-to-month contract — easy to leave")
-                if internet == "Fiber optic": factors.append("🟡 Fiber optic users have higher churn rates")
-                if payment == "Electronic check": factors.append("🟡 Electronic check payment — correlated with churn")
-                if tech_support == "No": factors.append("🟡 No tech support — less engagement")
-                if not factors: factors.append("🟢 No major risk factors detected")
-                for f in factors: st.markdown(f)
+                for f in rec["risk_factors"]:
+                    st.markdown(f"• {f}")
 
         except requests.exceptions.ConnectionError:
             st.error("❌ Cannot connect to the prediction API. Please try again in a moment.")
